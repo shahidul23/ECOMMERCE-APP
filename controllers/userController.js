@@ -1,12 +1,15 @@
+const jwt = require('jsonwebtoken');
+const asyncHandler = require('express-async-handler')
 const User = require('../models/user.model');
+const config = require('../config/config')
 const bcrypt = require('bcrypt');
 const saltRounds = 10;
 
 const createUser = async(req, res) => {
     try {
-        const userfind = await User.findOne({email: req.body.email});
+        const findUser = await User.findOne({email: req.body.email});
         bcrypt.hash(req.body.password, saltRounds, async(err, hash) => {
-            if (!userfind) {
+            if (!findUser) {
                 const newUser = new User({
                     firstName:req.body.firstName,
                     lastName:req.body.lastName,
@@ -40,11 +43,81 @@ const createUser = async(req, res) => {
         });
     } catch (error) {
         res.status(500).json({
-            message:"Usre not Create, something is wtong",
+            message:"User not Create, something is wrong",
             success:false,
             error:error
         })
     }
 }
 
-module.exports = {createUser}
+const loginUser = async(req, res) =>{
+    try {
+        const user = await User.findOne({email: req.body.email});
+        if (!user) {
+            return res.status(401).json({
+                success:false,
+                message:"User not found"
+            })
+        }
+        if (!bcrypt.compareSync(req.body.password, user.password)) {
+            return res.status(401).json({
+                success:false,
+                message:"Incorrect password"
+            })
+        }
+        const payload = {
+            id:user._id,
+            email:user.email,
+        };
+        const token = jwt.sign(payload, config.jwt.jwt_sec, {
+            expiresIn:"2d"
+        })
+        return res.status(200).send({
+            success:true,
+            message:"User is logged in successfully",
+            user:{
+                id: user._id,
+                firstName:user.firstName,
+                lastName:user.lastName,
+                mobile:user.mobile,
+                email:user.email,
+                token: "Bearer "+token,
+            }
+        })
+    } catch (error) {
+        res.status(500).json({
+            message:"User is not logged in",
+            error:error
+        })
+    }
+}
+
+const getUser = async(req, res) =>{
+    try {
+        const getAllUsers = await User.find();
+        res.json({
+            message:"get all User successfully",
+            success:true,
+            getAllUsers
+        })
+    } catch (error) {
+        res.json({
+            message:"not get users",
+            success:false,
+            error:error
+        })
+    }
+}
+const getOneUser = asyncHandler(async(req, res) =>{
+    const {id} = req.params;
+    try {
+        const getUser = await User.findById(id);
+        res.status(201).json({
+            getUser,
+        })
+    } catch (error) {
+        throw new Error(error)
+    }
+})
+
+module.exports = {createUser, loginUser, getUser, getOneUser}

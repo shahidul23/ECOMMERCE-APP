@@ -24,6 +24,10 @@ var userSchema = new mongoose.Schema({
         type:String,
         required:true,
     },
+    rule:{
+        type:String,
+        default:"user"
+    },
     onCreate:{
         type: Date,
         default:Date.now
