@@ -92,6 +92,27 @@ const loginUser = async(req, res) =>{
     }
 }
 
+const updatedUser = asyncHandler(async(req, res) =>{
+    const { id } = req.params;
+    try {
+        const updatedUser = await User.findByIdAndUpdate(
+            id,
+            {
+                firstName:req.body.firstName,
+                lastName:req.body.lastName,
+                email:req.body.email,
+                mobile:req.body.mobile,
+            },
+            {
+                new:true,
+            }
+        );
+        res.json(updatedUser)
+    } catch (error) {
+        throw new Error(error)
+    }
+})
+
 const getUser = async(req, res) =>{
     try {
         const getAllUsers = await User.find();
@@ -113,11 +134,42 @@ const getOneUser = asyncHandler(async(req, res) =>{
     try {
         const getUser = await User.findById(id);
         res.status(201).json({
-            getUser,
+            message:"Find a user successfully",
+            success:true,
+            Users:{
+                id:getUser._id,
+                firstName:getUser.firstName,
+                lastName:getUser.lastName,
+                mobile:getUser.mobile,
+                email:getUser.email,
+                rule:getUser.rule
+            }
         })
     } catch (error) {
         throw new Error(error)
     }
+});
+
+const deleteUser = asyncHandler(async(req, res) =>{
+    const {id} = req.params;
+    try {
+        const deleteaUser = await User.findByIdAndDelete(id)
+        res.json({
+            message:"User delete Successfully",
+            success:true,
+            Users:{
+                id:deleteaUser._id,
+                firstName:deleteaUser.firstName,
+                lastName:deleteaUser.lastName,
+                mobile:deleteaUser.mobile,
+                email:deleteaUser.email,
+                onCreate:deleteaUser.onCreate
+            }
+        })
+    } catch (error) {
+        throw new Error(error)
+    } 
 })
 
-module.exports = {createUser, loginUser, getUser, getOneUser}
+
+module.exports = {createUser, loginUser, getUser, getOneUser, deleteUser, updatedUser}

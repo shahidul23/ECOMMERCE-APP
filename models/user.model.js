@@ -28,10 +28,14 @@ var userSchema = new mongoose.Schema({
         type:String,
         default:"user"
     },
-    onCreate:{
-        type: Date,
-        default:Date.now
-    }
+    cart:{
+        type:Array,
+        default: []
+    },
+    address:[{type: mongoose.Schema.ObjectId, ref: "Address"}],
+    wishlist:[{type: mongoose.Schema.ObjectId, ref: "Product"}],
+},{
+    timestamps:true
 });
 
 //Export the model
