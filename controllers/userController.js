@@ -3,6 +3,7 @@ const asyncHandler = require('express-async-handler')
 const User = require('../models/user.model');
 const config = require('../config/config')
 const bcrypt = require('bcrypt');
+const { validatedMongoseId } = require('../utils/validationMongoDB');
 const saltRounds = 10;
 
 const createUser = async(req, res) => {
@@ -93,10 +94,11 @@ const loginUser = async(req, res) =>{
 }
 
 const updatedUser = asyncHandler(async(req, res) =>{
-    const { id } = req.params;
+    const { _id } = req.user;
+    validatedMongoseId(_id);
     try {
         const updatedUser = await User.findByIdAndUpdate(
-            id,
+            _id,
             {
                 firstName:req.body.firstName,
                 lastName:req.body.lastName,
@@ -131,6 +133,7 @@ const getUser = async(req, res) =>{
 }
 const getOneUser = asyncHandler(async(req, res) =>{
     const {id} = req.params;
+    validatedMongoseId(id);
     try {
         const getUser = await User.findById(id);
         res.status(201).json({
@@ -152,6 +155,7 @@ const getOneUser = asyncHandler(async(req, res) =>{
 
 const deleteUser = asyncHandler(async(req, res) =>{
     const {id} = req.params;
+    validatedMongoseId(id);
     try {
         const deleteaUser = await User.findByIdAndDelete(id)
         res.json({
@@ -171,5 +175,62 @@ const deleteUser = asyncHandler(async(req, res) =>{
     } 
 })
 
+const blockUser = asyncHandler(async(req, res) =>{
+    const {id} = req.params;
+    try {
+        await User.findByIdAndUpdate(id,{
+            isBlocked:true,
+        },{
+            new:true
+        })
+        .then(() =>{
+            res.json({
+                message:"User is blocked",
+            })
+        })
+        .catch((err) =>{
+            res.json({
+                Error: err
+            })
+        })
+        
+    } catch (error) {
+        throw new Error(error)
+    }
+})
 
-module.exports = {createUser, loginUser, getUser, getOneUser, deleteUser, updatedUser}
+const UnblockUser = asyncHandler(async(req, res) =>{
+    const {id} = req.params;
+    try {
+        await User.findByIdAndUpdate(id,{
+            isBlocked:false,
+        },{
+            new:true
+        })
+        .then(() =>{
+            res.json({
+                message:"User unblocked",
+            })
+        })
+        .catch((err) =>{
+            res.json({
+                Error:err
+            })
+        })
+        
+    } catch (error) {
+        throw new Error(error)
+    }
+})
+
+
+module.exports = {
+    createUser, 
+    loginUser, 
+    getUser, 
+    getOneUser, 
+    deleteUser, 
+    updatedUser, 
+    blockUser, 
+    UnblockUser
+}
