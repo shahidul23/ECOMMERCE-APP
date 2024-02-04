@@ -3,7 +3,8 @@ const asyncHandler = require('express-async-handler')
 const User = require('../models/user.model');
 const config = require('../config/config')
 const bcrypt = require('bcrypt');
-const { validatedMongoseId } = require('../utils/validationMongoDB');
+const validatedMongooseId = require('../utils/validationMongoDB');
+const { generateRefreshToken } = require('../config/refreshToken');
 const saltRounds = 10;
 
 const createUser = async(req, res) => {
@@ -66,12 +67,22 @@ const loginUser = async(req, res) =>{
                 message:"Incorrect password"
             })
         }
+        const refreshToken = await generateRefreshToken(user._id);
+        await User.findByIdAndUpdate(user._id,{
+            refreshToken:refreshToken
+        },{
+            new:true
+        });
         const payload = {
             id:user._id,
             email:user.email,
         };
         const token = jwt.sign(payload, config.jwt.jwt_sec, {
             expiresIn:"2d"
+        });
+        res.cookie("refreshToken", refreshToken,{
+            httpOnly:true,
+            maxAge: 72 * 60 * 60 * 1000,
         })
         return res.status(200).send({
             success:true,
@@ -93,9 +104,33 @@ const loginUser = async(req, res) =>{
     }
 }
 
+const handleRefreshToken = asyncHandler(async(req, res) =>{
+    const cookie = req.cookies;
+    if (!cookie.refreshToken) throw new Error("No Refresh Token in cookies");
+    const refreshToken = cookie.refreshToken;
+    const user = await User.findOne({refreshToken: refreshToken});
+    if(!user) throw new Error("No Refresh token preset in db or not matched");
+    jwt.verify(refreshToken, config.jwt.jwt_sec, (err, decoded) =>{
+        if (err || user.id !== decoded.id ) {
+            throw new Error("There is something wrong with refresh token");    
+        }
+        const payload = {
+            id:user._id,
+            email:user.email,
+        };
+        const assessToken = jwt.sign(payload, config.jwt.jwt_sec, {
+            expiresIn:"2d"
+        });
+        res.json({
+            AccessToken:"Bearer "+assessToken
+        });
+    });
+
+});
+
 const updatedUser = asyncHandler(async(req, res) =>{
     const { _id } = req.user;
-    validatedMongoseId(_id);
+    validatedMongooseId(_id);
     try {
         const updatedUser = await User.findByIdAndUpdate(
             _id,
@@ -103,7 +138,7 @@ const updatedUser = asyncHandler(async(req, res) =>{
                 firstName:req.body.firstName,
                 lastName:req.body.lastName,
                 email:req.body.email,
-                mobile:req.body.mobile,
+                mobile:Number(req.body.mobile),
             },
             {
                 new:true,
@@ -133,7 +168,7 @@ const getUser = async(req, res) =>{
 }
 const getOneUser = asyncHandler(async(req, res) =>{
     const {id} = req.params;
-    validatedMongoseId(id);
+    validatedMongooseId(id);
     try {
         const getUser = await User.findById(id);
         res.status(201).json({
@@ -155,7 +190,7 @@ const getOneUser = asyncHandler(async(req, res) =>{
 
 const deleteUser = asyncHandler(async(req, res) =>{
     const {id} = req.params;
-    validatedMongoseId(id);
+    validatedMongooseId(id);
     try {
         const deleteaUser = await User.findByIdAndDelete(id)
         res.json({
@@ -223,7 +258,27 @@ const UnblockUser = asyncHandler(async(req, res) =>{
     }
 })
 
-
+const logout =asyncHandler(async(req, res) =>{
+    const cookie = req.cookies;
+    if (!cookie.refreshToken) throw new Error("No Refresh Token in cookies");
+    const refreshToken = cookie.refreshToken;
+    const user = await User.findOne({refreshToken: refreshToken});
+    if(!user){
+        res.clearCookie("refreshToken",{
+            httpOnly:true,
+            secure:true
+        });
+        return res.status(204);
+    }
+    await User.findOneAndUpdate(refreshToken,{
+        refreshToken:"",
+    });
+    res.clearCookie("refreshToken",{
+        httpOnly:true,
+        secure:true
+    });
+    res.sendStatus(204);
+});
 module.exports = {
     createUser, 
     loginUser, 
@@ -232,5 +287,7 @@ module.exports = {
     deleteUser, 
     updatedUser, 
     blockUser, 
-    UnblockUser
+    UnblockUser,
+    handleRefreshToken,
+    logout
 }
