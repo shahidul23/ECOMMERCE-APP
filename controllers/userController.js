@@ -279,6 +279,20 @@ const logout =asyncHandler(async(req, res) =>{
     });
     res.sendStatus(204);
 });
+
+const updatePassword = asyncHandler(async(req,res) =>{
+    const {_id} = req.user;
+    const {password} = req.body;
+    validatedMongooseId(_id);
+    const user = await User.findById(_id);
+    if (password) {
+        user.password = password;
+        const changePassword = await user.save();
+        res.json(changePassword);
+    }else{
+        res.json(user);
+    }
+})
 module.exports = {
     createUser, 
     loginUser, 
@@ -289,5 +303,6 @@ module.exports = {
     blockUser, 
     UnblockUser,
     handleRefreshToken,
-    logout
+    logout,
+    updatePassword
 }
