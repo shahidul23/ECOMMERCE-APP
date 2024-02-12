@@ -9,6 +9,10 @@ const connect = {
     },
     jwt:{
         jwt_sec:process.env.JWT_SEC
+    },
+    authMail:{
+        mail:process.env.MAIL_ID,
+        pass:process.env.MP
     }
 };
 

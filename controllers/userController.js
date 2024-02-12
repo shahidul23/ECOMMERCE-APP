@@ -5,104 +5,146 @@ const config = require('../config/config')
 const bcrypt = require('bcrypt');
 const validatedMongooseId = require('../utils/validationMongoDB');
 const { generateRefreshToken } = require('../config/refreshToken');
+const { generateToken } = require('../config/jwt');
+const { sendEmail } = require('./email/emailController');
 const saltRounds = 10;
 
-const createUser = async(req, res) => {
-    try {
-        const findUser = await User.findOne({email: req.body.email});
-        bcrypt.hash(req.body.password, saltRounds, async(err, hash) => {
-            if (!findUser) {
-                const newUser = new User({
-                    firstName:req.body.firstName,
-                    lastName:req.body.lastName,
-                    mobile: Number(req.body.mobile),
-                    email:req.body.email,
-                    password: hash,
-                })
-                await newUser.save()
-                .then(() => {
-                    res.status(201).json({
-                        message:"User Create successfully",
-                        success:true,
-                        user:{
-                            name: newUser.firstName +" "+ newUser.lastName,
-                            email:newUser.email,
-                        }
-                    })
-                }).catch((err) => {
-                    res.status(500).json({
-                        message:"User not Created",
-                        success:false,
-                        error:err
-                    })
-                });
-            }else{
-                res.status(400).json({
-                    message:"User Already exist",
-                    success:false,
-                })
-            }
-        });
-    } catch (error) {
-        res.status(500).json({
-            message:"User not Create, something is wrong",
-            success:false,
-            error:error
-        })
+const createUser = asyncHandler(async(req, res) =>{
+    const email = req.body.email;
+    const fundUser = await User.findOne({email:email});
+    if (!fundUser) {
+        const newUser = await User.create(req.body);
+        res.json(newUser)
+    }else{
+        throw new Error("User Already Exists");
     }
-}
+});
+// const createUser = async(req, res) => {
+//     try {
+//         const findUser = await User.findOne({email: req.body.email});
+//         bcrypt.hash(req.body.password, saltRounds, async(err, hash) => {
+//             if (!findUser) {
+//                 const newUser = new User({
+//                     firstName:req.body.firstName,
+//                     lastName:req.body.lastName,
+//                     mobile: Number(req.body.mobile),
+//                     email:req.body.email,
+//                     password: hash,
+//                 })
+//                 await newUser.save()
+//                 .then(() => {
+//                     res.status(201).json({
+//                         message:"User Create successfully",
+//                         success:true,
+//                         user:{
+//                             name: newUser.firstName +" "+ newUser.lastName,
+//                             email:newUser.email,
+//                         }
+//                     })
+//                 }).catch((err) => {
+//                     res.status(500).json({
+//                         message:"User not Created",
+//                         success:false,
+//                         error:err
+//                     })
+//                 });
+//             }else{
+//                 res.status(400).json({
+//                     message:"User Already exist",
+//                     success:false,
+//                 })
+//             }
+//         });
+//     } catch (error) {
+//         res.status(500).json({
+//             message:"User not Create, something is wrong",
+//             success:false,
+//             error:error
+//         })
+//     }
+// }
 
-const loginUser = async(req, res) =>{
-    try {
-        const user = await User.findOne({email: req.body.email});
-        if (!user) {
-            return res.status(401).json({
-                success:false,
-                message:"User not found"
-            })
-        }
-        if (!bcrypt.compareSync(req.body.password, user.password)) {
-            return res.status(401).json({
-                success:false,
-                message:"Incorrect password"
-            })
-        }
-        const refreshToken = await generateRefreshToken(user._id);
-        await User.findByIdAndUpdate(user._id,{
-            refreshToken:refreshToken
-        },{
-            new:true
-        });
-        const payload = {
-            id:user._id,
-            email:user.email,
-        };
-        const token = jwt.sign(payload, config.jwt.jwt_sec, {
-            expiresIn:"2d"
-        });
+const loginUser = asyncHandler(async(req, res) =>{
+    const {email, password} = req.body;
+    const findUser = await User.findOne({ email:email });
+    if (findUser && await findUser.isPasswordMatched(password)) {
+        const refreshToken = await generateRefreshToken(findUser._id);
+        await User.findByIdAndUpdate(
+            findUser.id,
+            {
+                refreshToken:refreshToken,
+            },{
+                new:true
+            }
+        );
         res.cookie("refreshToken", refreshToken,{
             httpOnly:true,
-            maxAge: 72 * 60 * 60 * 1000,
+            maxAge:72 * 60 * 60 * 1000,
         })
-        return res.status(200).send({
-            success:true,
-            message:"User is logged in successfully",
-            user:{
-                id: user._id,
-                firstName:user.firstName,
-                lastName:user.lastName,
-                mobile:user.mobile,
-                email:user.email,
-                token: "Bearer "+token,
-            }
+        res.json({
+            id: findUser._id,
+            firstName:findUser.firstName,
+            lastName:findUser.lastName,
+            mobile:findUser.mobile,
+            email:findUser.email,
+            token: generateToken(findUser._id)
         })
-    } catch (error) {
-        res.status(500).json({
-            message:"User is not logged in",
-            error:error
-        })
+    }else{
+        throw new Error("Invalid Credentials")
     }
-}
+})
+
+// const loginUser = async(req, res) =>{
+//     try {
+//         const user = await User.findOne({email: req.body.email});
+//         if (!user) {
+//             return res.status(401).json({
+//                 success:false,
+//                 message:"User not found"
+//             })
+//         }
+//         if (!bcrypt.compareSync(req.body.password, user.password)) {
+//             return res.status(401).json({
+//                 success:false,
+//                 message:"Incorrect password"
+//             })
+//         }
+//         const refreshToken = await generateRefreshToken(user._id);
+//         await User.findByIdAndUpdate(user._id,{
+//             refreshToken:refreshToken
+//         },{
+//             new:true
+//         });
+//         const payload = {
+//             id:user._id,
+//             email:user.email,
+//         };
+//         const token = jwt.sign(payload, config.jwt.jwt_sec, {
+//             expiresIn:"2d"
+//         });
+//         res.cookie("refreshToken", refreshToken,{
+//             httpOnly:true,
+//             maxAge: 72 * 60 * 60 * 1000,
+//         })
+//         return res.status(200).send({
+//             success:true,
+//             message:"User is logged in successfully",
+//             user:{
+//                 id: user._id,
+//                 firstName:user.firstName,
+//                 lastName:user.lastName,
+//                 mobile:user.mobile,
+//                 email:user.email,
+//                 token: "Bearer "+token,
+//             }
+//         })
+//     } catch (error) {
+//         res.status(500).json({
+//             message:"User is not logged in",
+//             error:error
+//         })
+//     }
+// }
 
 const handleRefreshToken = asyncHandler(async(req, res) =>{
     const cookie = req.cookies;
@@ -293,6 +335,32 @@ const updatePassword = asyncHandler(async(req,res) =>{
         res.json(user);
     }
 })
+const forgotPasswordToken = asyncHandler(async(req, res) =>{
+    const {email} = req.body;
+    const user = await User.findOne({email})
+    if (!user) throw new Error("User not found with this email");
+    try {
+        const token = await user.createPasswordResetToken();
+        await user.save();
+        const resetURL = `Hi please follow this link to reset your password. This link is valid till 10 minutes from now. <a href="http://localhost:3000/api/user/reset-password/${token}"> </a>`
+        const data = {
+            to:email,
+            subject:"Forgot Password Link",
+            text:"Hey User",
+            htm:resetURL
+        }
+        try {
+            sendEmail(data);
+            res.send('Email sent successfully');
+        } catch (error) {
+            console.error('Error sending email:', error);
+            res.status(500).send('Error sending email');
+        }
+        res.json(token);
+    } catch (error) {
+        throw new Error(error)
+    }
+})
 module.exports = {
     createUser, 
     loginUser, 
@@ -304,5 +372,6 @@ module.exports = {
     UnblockUser,
     handleRefreshToken,
     logout,
-    updatePassword
+    updatePassword,
+    forgotPasswordToken
 }
