@@ -8,6 +8,8 @@ const morgan = require('morgan')
 const userRouter = require('./routes/auth.route');
 const productRouter = require('./routes/product.route');
 const blogRouter = require("./routes/blog.route");
+const categoryRouter = require("./routes/category.route");
+const blogCatRouter = require("./routes/blog.cat.route")
 const { notFound, errorHandler } = require("./middlewares/errorHandler");
 
 
@@ -23,7 +25,9 @@ app.get("/",(req, res)=>{
 
 app.use("/api/user",userRouter);
 app.use("/api/product", productRouter);
-app.use("/api/blog", blogRouter)
+app.use("/api/blog", blogRouter);
+app.use("/api/category",categoryRouter);
+app.use("/api/blog-category",blogCatRouter);
 
 app.use(notFound);
 app.use(errorHandler);
