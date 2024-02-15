@@ -9,7 +9,8 @@ const userRouter = require('./routes/auth.route');
 const productRouter = require('./routes/product.route');
 const blogRouter = require("./routes/blog.route");
 const categoryRouter = require("./routes/category.route");
-const blogCatRouter = require("./routes/blog.cat.route")
+const blogCatRouter = require("./routes/blog.cat.route");
+const brandRouter = require("./routes/brand.route");
 const { notFound, errorHandler } = require("./middlewares/errorHandler");
 
 
@@ -28,6 +29,7 @@ app.use("/api/product", productRouter);
 app.use("/api/blog", blogRouter);
 app.use("/api/category",categoryRouter);
 app.use("/api/blog-category",blogCatRouter);
+app.use("/api/brand",brandRouter)
 
 app.use(notFound);
 app.use(errorHandler);

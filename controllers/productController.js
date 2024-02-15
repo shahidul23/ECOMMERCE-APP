@@ -1,7 +1,8 @@
 const { createSlug } = require('../helpsFunction/slug');
 const Product = require('../models/product.model');
+const User = require("../models/user.model");
 const asyncHandler = require('express-async-handler');
-
+const validatedMongooseId = require('../utils/validationMongoDB');
 const createProduct = asyncHandler(async(req, res) =>{
     try {
         const newProduct =Product({
@@ -79,6 +80,7 @@ const getAllProducts = asyncHandler(async(req, res) =>{
 })
 const getOneProduct = asyncHandler(async(req, res) =>{
     const {id} = req.params;
+    validatedMongooseId(id)
     try {
         const findProduct = await Product.findById(id)
         res.json({
@@ -92,8 +94,8 @@ const getOneProduct = asyncHandler(async(req, res) =>{
 });
 
 const productUpdate = asyncHandler(async(req, res) =>{
-    const {id} = req.params;
     try {
+        const {id} = req.params;
         const updatedProduct = await Product.findOneAndUpdate(id,{
             title:req.body.title,
             slug:createSlug(req.body.title),
@@ -116,13 +118,13 @@ const productUpdate = asyncHandler(async(req, res) =>{
             success:true,
             updatedProduct,
         });
-
     } catch (error) {
         throw new Error(error)
     }
 });
 const productDeleted =  asyncHandler(async(req, res) =>{
     const {id} = req.params;
+    validatedMongooseId(id)
     try {
         const deletedProduct = await Product.findByIdAndDelete(id);
         res.json({
@@ -133,8 +135,75 @@ const productDeleted =  asyncHandler(async(req, res) =>{
     } catch (error) {
         throw new Error(error)
     }
+});
+
+const addToWishlist = asyncHandler(async(req, res) =>{
+    const {_id} = req.user;
+    validatedMongooseId(_id)
+    const {prodId} = req.body;
+    try {
+        const user = await User.findById(_id);
+        const alreadyAdded = user.wishlist.find((id) =>id.toString() === prodId);
+        if (alreadyAdded) {
+            let user = await User.findByIdAndUpdate(_id,{
+                $pull:{wishlist: prodId},
+            },{
+                new:true,
+            });
+            res.json(user)
+        }else{
+            let user = await User.findByIdAndUpdate(_id,{
+                $push:{wishlist:prodId},
+            },{
+                new:true
+            });
+            res.json(user);
+        }
+    } catch (error) {
+        throw new Error(error)
+    }
 })
 
+const rating = asyncHandler(async(req, res) =>{
+    const {_id} = req.user;
+    const {star, prodId, comment} = req.body;
+    try {
+        const product = await Product.findById(prodId);
+        let alreadyRated = product.ratings.find((userId) => userId.postedby.toString() === _id.toString());
+        if (alreadyRated) {
+            await Product.updateOne({
+                ratings:{ $elemMatch:alreadyRated }
+            },{
+                $set:{"ratings.$.star":star,"ratings.$.comment":comment}
+            },{
+                new:true
+            });
+        }else{
+            await Product.findByIdAndUpdate(prodId,{
+                $push:{
+                    ratings:{
+                        star:star,
+                        comment:comment,
+                        postedby:_id,
+                    }
+                }
+            },{
+                new:true,
+            });
+        }
+        const getAllRating = await Product.findById(prodId);
+        let totalRating = getAllRating.ratings.length;
+        let ratingSum = getAllRating.ratings.map((item) =>item.star).reduce((prev, curr)=> prev + curr, 0);
+        let actualRating = Math.round(ratingSum / totalRating);
+        let finalProductRating = await Product.findByIdAndUpdate(prodId,{
+            totalRating: actualRating
+        },{
+            new:true
+        });
+        res.json(finalProductRating) 
+    } catch (error) {
+        throw new Error(error)
+    }
+})
 
-
-module.exports = {createProduct, getOneProduct, getAllProducts, productUpdate, productDeleted};
+module.exports = {createProduct, getOneProduct, getAllProducts, productUpdate, productDeleted, addToWishlist, rating};
