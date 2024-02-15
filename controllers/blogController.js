@@ -137,6 +137,31 @@ const dislikesTheBlog = asyncHandler(async(req, res) =>{
     } catch (error) {
         throw new Error(error)
     }
+});
+const uploadImagesBlog = asyncHandler(async(req, res) =>{
+    try {
+        const {id} = req.params;
+        validatedMongooseId(id);
+        const uploder = (path) => cloudinaryUploadImg(path, "images");
+        const urls = [];
+        const files =req.files;
+        for(const file  of files){
+            const {path} = file;
+            const newPath = await uploder(path);
+            urls.push(newPath);
+            fs.unlinkSync(path)
+        }
+        const findBlog = await Blog.findByIdAndUpdate(id,{
+            images:urls.map((file) =>{
+                return file
+            }),
+        },{
+            new:true
+        });
+        res.json(findBlog)
+    } catch (error) {
+        throw new Error(error);
+    }
 })
 
-module.exports = { createBlog , updateBlogs, getOneBlogs, getAllBlogs, deleteBlog, likeBlogs, dislikesTheBlog}
+module.exports = { createBlog , updateBlogs, getOneBlogs, getAllBlogs, deleteBlog, likeBlogs, dislikesTheBlog, uploadImagesBlog }

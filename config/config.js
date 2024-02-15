@@ -13,6 +13,11 @@ const connect = {
     authMail:{
         mail:process.env.MAIL_ID,
         pass:process.env.MP
+    },
+    cloudinary:{
+        cloud_name:process.env.CLOUD_NAME,
+        api_key:process.env.API_KEY,
+        sec_key:process.env.API_SEC
     }
 };
 
