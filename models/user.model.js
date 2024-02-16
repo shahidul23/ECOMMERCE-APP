@@ -104,16 +104,15 @@ const userSchema = new mongoose.Schema({
     },
     cart: {
         type: [mongoose.Schema.Types.ObjectId],
-        ref: 'Product',
-        default: []
+        ref: 'product',
+        default: [] 
     },
-    addresses: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Address'
-    }],
+    address: {
+        type: String,
+    },
     wishlist: [{
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Product'
+        ref: 'product'
     }],
     refreshToken: String,
     passwordChangedAt: Date,
