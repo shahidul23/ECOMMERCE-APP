@@ -7,7 +7,7 @@ const router = express.Router();
 router.post("/",authMiddleware,isAdmin, createBrand);
 router.put("/:id",authMiddleware,isAdmin, updateBrand);
 router.get("/:id",authMiddleware, isAdmin, getOneBrand);
-router.get("/",authMiddleware, isAdmin, getAllBrand);
+router.get("/",authMiddleware, getAllBrand);
 router.delete("/:id",authMiddleware, isAdmin, deleteBrand);
 
 module.exports = router

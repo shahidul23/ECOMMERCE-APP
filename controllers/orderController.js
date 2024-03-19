@@ -57,9 +57,20 @@ const getOrder = asyncHandler(async(req, res) =>{
     validatedMongooseId(_id)
     try {
         const userOrders = await Order.findOne({orderBy:_id})
-        .populate("products.product")
+        .populate("products.product").populate("orderBy")
         .exec();
         res.json(userOrders);
+    } catch (error) {
+        throw new Error(error);
+    }
+});
+
+const getAllOrder = asyncHandler(async(req, res) =>{
+    try {
+        const allOrders = await Order.find()
+        .populate("products.product").populate("orderBy")
+        .exec();
+        res.json(allOrders);
     } catch (error) {
         throw new Error(error);
     }
@@ -85,4 +96,4 @@ const updateOrderStatus = asyncHandler(async(req, res) =>{
 })
 
 
-module.exports = {createOrder, getOrder, updateOrderStatus}
+module.exports = {createOrder, getOrder, updateOrderStatus,getAllOrder}

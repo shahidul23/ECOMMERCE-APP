@@ -6,7 +6,7 @@ const router = express.Router();
 
 router.post("/",authMiddleware, isAdmin, createProduct);
 router.put("/wishlist",authMiddleware, isAdmin, addToWishlist);
-router.get("/",authMiddleware, isAdmin, getAllProducts);
+router.get("/",authMiddleware, getAllProducts);
 router.get("/:id",authMiddleware, isAdmin, getOneProduct );
 router.put("/update/:id",authMiddleware, isAdmin, productUpdate);
 router.put("/rating",authMiddleware, isAdmin, rating);
