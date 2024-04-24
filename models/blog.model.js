@@ -37,10 +37,7 @@ var blogSchema = new mongoose.Schema({
             ref:"User"
         }
     ],
-    image:{
-        type:String,
-        default:"https://media.istockphoto.com/id/1387141965/photo/happy-black-woman-using-digital-tablet-and-having-coffee-break.webp?b=1&s=170667a&w=0&k=20&c=QmgLjoiZxx0Vy8mQrZ9vTF-tzZ0Ri7ETywn7-3-xf7k="
-    },
+    images:[],
     author:{
         type:String,
         default:"Admin"
